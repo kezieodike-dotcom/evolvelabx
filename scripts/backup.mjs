@@ -1,0 +1,13 @@
+import 'dotenv/config';
+import { DatabaseSync } from 'node:sqlite';
+import { resolve, dirname } from 'node:path';
+import { mkdirSync, existsSync } from 'node:fs';
+const source=resolve(process.env.DATABASE_PATH || 'data/evolvelabx.sqlite');
+const target=resolve(process.argv[2] || `data/backups/evolvelabx-${new Date().toISOString().replaceAll(':','-')}.sqlite`);
+if(!existsSync(source))throw new Error('Database does not exist. Start the API first.');
+if(existsSync(target)||source===target)throw new Error('Backup target must be a new file.');
+mkdirSync(dirname(target),{recursive:true});
+const db=new DatabaseSync(source);db.prepare('VACUUM INTO ?').run(target);db.close();
+const verify=new DatabaseSync(target,{readOnly:true});
+if(verify.prepare('PRAGMA integrity_check').get().integrity_check!=='ok')throw new Error('Backup integrity check failed');
+verify.close();console.log(`Verified SQLite backup: ${target}`);
